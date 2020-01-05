@@ -16,6 +16,11 @@ class ChatworkMessage extends Model
         'room_id',
         'account_id',
         'body',
+        'account_name',
+        'task_id',
+        'task_status',
+        'project_name',
+        'task_url',
         'send_time',
         'update_time',
     ];

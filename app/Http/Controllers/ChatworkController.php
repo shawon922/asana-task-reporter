@@ -16,7 +16,7 @@ class ChatworkController extends Controller
    */
   public function __construct()
   {
-      //
+    date_default_timezone_set("Asia/Dhaka");
   }
 
   /**
@@ -91,23 +91,20 @@ class ChatworkController extends Controller
       if (!empty($data['body'])) {
         
         $rawMessage = trim($data['body']);
-        
+
         if (Str::startsWith($rawMessage, '[info]') && Str::endsWith($rawMessage, '[/info]')) {
-          $parsedMessage = rtrim(ltrim($rawMessage, '/\[info\]/'), '/\[\/info\]/');
+          $parsedMessage = trim(rtrim(ltrim($rawMessage, '/\[info\]/'), '/\[\/info\]/'));
           $messageArr = explode(',', $parsedMessage);
 
           if (count($messageArr) == 3) {
             list($taskStatus, $projectName, $taskUrl) = $messageArr;
+            $taskUrl = rtrim($taskUrl, '/f');
             $taskUrlSections = explode('/', $taskUrl);
             $len = count($taskUrlSections);
             $taskId = 0;
             
-            if ($len > 2) {
-              if ($taskUrlSections[$len-1] != 'f') {
-                $taskId = $taskUrlSections[$len-1];
-              } else {
-                $taskId = $taskUrlSections[$len-2];
-              }
+            if ($len > 0) {
+              $taskId = $taskUrlSections[$len-1];
             }
             
             $message->message_id = $data['message_id'];
@@ -136,7 +133,6 @@ class ChatworkController extends Controller
 
   public function export()
   {
-    date_default_timezone_set("Asia/Tokyo");
 
     $header = ['Name',	'Project',	'URL',	'Start',	'End',	'Time'];
     $todayTsStart = strtotime('today');
@@ -156,7 +152,7 @@ class ChatworkController extends Controller
                   ->orderBy('send_time', 'asc')
                   ->get()
                   ->toArray();
-    
+
     $csv = \League\Csv\Writer::createFromFileObject(new \SplTempFileObject);
     $csv->setOutputBOM(\League\Csv\Writer::BOM_UTF8);
     $csv->insertOne($header);
@@ -226,5 +222,10 @@ class ChatworkController extends Controller
       'Content-Transfer-Encoding' => 'binary',
       'Content-Disposition' => 'attachment; filename="'.date('Ymd').'.csv"',
     ]);
+  }
+
+  public function sendMessage(Request $request)
+  {
+    
   }
 }
