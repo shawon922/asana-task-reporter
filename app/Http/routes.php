@@ -13,7 +13,8 @@
 
 
 $app->get('/', function () use ($app) {
-    return view('index');
+    // return view('index');
+    $app->abort(404);
 });
 
 $app->get('/key', function() {
@@ -24,7 +25,10 @@ $app->get('/key', function() {
 $app->post('/message-hook', 'ChatworkController@storeMessage');
 
 /* Exports report for today */
-$app->get('/export', 'ChatworkController@export');
+// $app->get('/export', 'ChatworkController@export');
+$app->get('/export', function () use ($app) {
+    $app->abort(404);
+});
 
 /* Sends asana url to chatwork */
 $app->post('/send-message', 'ChatworkController@sendMessage');
