@@ -47,7 +47,13 @@
       <div class="jumbotron">
         <h1>Chatwork Task Reporter</h1>
         <p class="lead">This app stores daily asana task url from Chatwork.</p>
-        <a class="btn btn-lg btn-primary" href="<?= url('export') ?>" role="button">Generate Report</a>
+        <form action="<?= url('export') ?>" target="_blank">
+          <div class="form-group">
+            <input class="form-control" name="date" type="date" value="<?= date('Y-m-d') ?>" />
+          </div>
+
+          <button class="btn btn-lg btn-primary" type="submit">Generate Report</button>
+        </form>
       </div>
     </main>
 

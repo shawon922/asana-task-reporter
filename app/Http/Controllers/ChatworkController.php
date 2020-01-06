@@ -131,12 +131,20 @@ class ChatworkController extends Controller
     return $message;
   }
 
-  public function export()
+  public function export(Request $request)
   {
 
     $header = ['Name',	'Project',	'URL',	'Start',	'End',	'Time'];
-    $todayTsStart = strtotime('today');
-    $todayTsEnd = strtotime('tomorrow') - 1;
+    $date = $request->get('date');
+
+    if (!empty($date)) {
+      $todayTsStart = strtotime($date . ' 00:00:00');
+      $todayTsEnd = strtotime($date . ' 23:59:59');
+    } else {
+      $todayTsStart = strtotime('today');
+      $todayTsEnd = strtotime('tomorrow') - 1;
+    }
+    
     $messages = ChatworkMessage::select([
                     'id', 
                     'account_id',
@@ -152,7 +160,7 @@ class ChatworkController extends Controller
                   ->orderBy('send_time', 'asc')
                   ->get()
                   ->toArray();
-
+    
     $csv = \League\Csv\Writer::createFromFileObject(new \SplTempFileObject);
     $csv->setOutputBOM(\League\Csv\Writer::BOM_UTF8);
     $csv->insertOne($header);
@@ -220,7 +228,7 @@ class ChatworkController extends Controller
     return response((string) $csv, 200, [
       'Content-Type' => 'text/csv',
       'Content-Transfer-Encoding' => 'binary',
-      'Content-Disposition' => 'attachment; filename="'.date('Ymd').'.csv"',
+      'Content-Disposition' => 'attachment; filename="'.date('Ymd', $todayTsStart).'.csv"',
     ]);
   }
 

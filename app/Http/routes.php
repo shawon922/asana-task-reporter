@@ -20,6 +20,11 @@ $app->get('/key', function() {
     return \Illuminate\Support\Str::random(32);
 });
 
+/* Receives chatwork message */
 $app->post('/message-hook', 'ChatworkController@storeMessage');
+
+/* Exports report for today */
 $app->get('/export', 'ChatworkController@export');
 
+/* Sends asana url to chatwork */
+$app->post('/send-message', 'ChatworkController@sendMessage');
