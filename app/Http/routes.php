@@ -32,5 +32,8 @@ $app->get('/export', function () use ($app) {
 
 $app->group(['prefix'=>'api/v1', 'namespace' => 'App\Http\Controllers'], function() use($app){
     /* Sends asana url to chatwork */
+    $app->get('/profile', 'ChatworkController@profile');
     $app->post('/messages', 'ChatworkController@postMessage');
+
+    $app->get('/report', 'ReportController@getReport');
 });

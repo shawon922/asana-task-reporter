@@ -21,10 +21,11 @@ class ChatworkMessages extends Migration
             $table->text('body');
             $table->string('account_name', 100);
             $table->string('task_id', 50);
-            $table->string('task_status', 10);
             $table->string('project_name', 100);
             $table->string('task_url', 191);
-            $table->integer('send_time');
+            $table->integer('start_time');
+            $table->integer('end_time');
+            $table->string('task_status', 10);
             $table->integer('update_time');
             $table->timestamps();
         });

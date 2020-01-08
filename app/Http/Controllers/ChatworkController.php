@@ -10,6 +10,11 @@ use App\ChatworkMessage;
 
 class ChatworkController extends Controller
 {
+  private $chatworkApiUrl = 'https://api.chatwork.com/v2/';
+  // private $chatworkRoomId = 38623685; // Tokyo BD room
+  private $chatworkRoomId = 96680226; // My room
+  
+
   /**
    * Create a new controller instance.
    *
@@ -28,7 +33,6 @@ class ChatworkController extends Controller
    */
   public function storeMessage(Request $request)
   {
-    $message = new ChatworkMessage;
     $roomMembers = [
       321931 => "Takeshi Torigoe",
       369868 => "木下祥吾 Kinoshita Shogo",
@@ -107,17 +111,37 @@ class ChatworkController extends Controller
             if ($len > 0) {
               $taskId = $taskUrlSections[$len-1];
             }
-            
-            $message->message_id = $data['message_id'];
-            $message->room_id = $data['room_id'];
-            $message->account_id = $data['account_id'];
-            $message->account_name = isset($roomMembers[$data['account_id']]) ? $roomMembers[$data['account_id']] : '-';
-            $message->body = $rawMessage;
-            $message->task_id = $taskId;
+
+            $taskStatus = strtolower(trim($taskStatus));
+
+            if ($taskStatus === 'start') {
+              $message = new ChatworkMessage;
+              $message->start_time = $data['send_time'];
+              $message->end_time = 0;
+              $message->message_id = $data['message_id'];
+              $message->room_id = $data['room_id'];
+              $message->account_id = $data['account_id'];
+              $message->account_name = isset($roomMembers[$data['account_id']]) ? $roomMembers[$data['account_id']] : '-';
+              $message->body = $rawMessage;
+              $message->task_id = $taskId;
+              $message->project_name = $projectName;
+              $message->task_url = $taskUrl;
+              
+            } else if ($taskStatus === 'end') {
+              $message = ChatworkMessage::where([
+                ['task_status', '=', 'start'],
+                ['account_id', '=', $data['account_id']],
+                ['task_id', '=', $taskId],
+              ])
+              ->orderBy('id', 'desc')
+              ->first();
+              $message->end_time = $data['send_time'];
+
+            } else {
+              return;
+            }
+
             $message->task_status = $taskStatus;
-            $message->project_name = $projectName;
-            $message->task_url = $taskUrl;
-            $message->send_time = $data['send_time'];
             $message->update_time = $data['update_time'];
 
             $message->save();
@@ -233,12 +257,28 @@ class ChatworkController extends Controller
     ]);
   }
 
+  public function profile(Request $request)
+  {
+    $chatworkUrl = $this->chatworkApiUrl;
+    
+    $token = $request->header('X-ChatWorkToken');
+    
+    $client = new Client(['base_uri' => $chatworkUrl, 'headers' => [
+        'Accept' => 'application/json',
+        'X-ChatWorkToken' => $token,
+      ]
+    ]);
+    
+    $url = 'me';
+    $response = $client->request('GET', $url);
+
+    return $response->getBody();
+  }
+
   public function postMessage(Request $request)
   {
-    $chatworkUrl = 'https://api.chatwork.com/v2/';
-    // $roomId = 38623685; // Tokyo BD room
-    $roomId = 96680226; // My room
-    // $token = '939352882a48f77d2e87d5006634aff9';
+    $chatworkUrl = $this->chatworkApiUrl;
+    $roomId = $this->chatworkRoomId;
     $data = $request->input('data');
     $token = $data['chatwork_token'];
     
@@ -254,6 +294,24 @@ class ChatworkController extends Controller
         'Content-Type' => 'application/x-www-form-urlencoded',
       ]
     ]);
+
+    return $response->getBody();
+  }
+
+  public function getReport(Request $request)
+  {
+    $chatworkUrl = $this->chatworkApiUrl;
+    
+    $token = $request->header('X-ChatWorkToken');
+    
+    $client = new Client(['base_uri' => $chatworkUrl, 'headers' => [
+        'Accept' => 'application/json',
+        'X-ChatWorkToken' => $token,
+      ]
+    ]);
+    
+    $url = 'me';
+    $response = $client->request('GET', $url);
 
     return $response->getBody();
   }
