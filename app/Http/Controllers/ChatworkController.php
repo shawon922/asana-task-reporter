@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use GuzzleHttp\Client;
 
 use App\ChatworkMessage;
 
@@ -232,8 +233,28 @@ class ChatworkController extends Controller
     ]);
   }
 
-  public function sendMessage(Request $request)
+  public function postMessage(Request $request)
   {
+    $chatworkUrl = 'https://api.chatwork.com/v2/';
+    // $roomId = 38623685; // Tokyo BD room
+    $roomId = 96680226; // My room
+    // $token = '939352882a48f77d2e87d5006634aff9';
+    $data = $request->input('data');
+    $token = $data['chatwork_token'];
     
+    $payload = [
+      'body' => $data['body'],
+    ];
+    $client = new Client(['base_uri' => $chatworkUrl]);
+    $url = 'rooms/'. $roomId .'/messages';
+    $response = $client->request('POST', $url, [
+      'form_params' => $payload,
+      'headers' => [
+        'X-ChatWorkToken' => $token,
+        'Content-Type' => 'application/x-www-form-urlencoded',
+      ]
+    ]);
+
+    return $response->getBody();
   }
 }
