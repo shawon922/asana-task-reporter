@@ -11,8 +11,7 @@ use App\ChatworkMessage;
 class ChatworkController extends Controller
 {
   private $chatworkApiUrl = 'https://api.chatwork.com/v2/';
-  // private $chatworkRoomId = 38623685; // Tokyo BD room
-  private $chatworkRoomId = 96680226; // My room
+  private $chatworkRoomId = 38623685; // Tokyo BD room
   
 
   /**
@@ -154,107 +153,6 @@ class ChatworkController extends Controller
     }
     
     return $message;
-  }
-
-  public function export(Request $request)
-  {
-
-    $header = ['Name',	'Project',	'URL',	'Start',	'End',	'Time'];
-    $date = $request->get('date');
-
-    if (!empty($date)) {
-      $todayTsStart = strtotime($date . ' 00:00:00');
-      $todayTsEnd = strtotime($date . ' 23:59:59');
-    } else {
-      $todayTsStart = strtotime('today');
-      $todayTsEnd = strtotime('tomorrow') - 1;
-    }
-    
-    $messages = ChatworkMessage::select([
-                    'id', 
-                    'account_id',
-                    'account_name',
-                    'task_id',
-                    'task_status',
-                    'project_name',
-                    'task_url',
-                    'send_time',
-                  ])
-                  ->where('send_time', '>=', $todayTsStart)->where('send_time', '<=', $todayTsEnd)
-                  ->orderBy('account_id', 'asc')
-                  ->orderBy('send_time', 'asc')
-                  ->get()
-                  ->toArray();
-    
-    $csv = \League\Csv\Writer::createFromFileObject(new \SplTempFileObject);
-    $csv->setOutputBOM(\League\Csv\Writer::BOM_UTF8);
-    $csv->insertOne($header);
-    
-    $report = [];
-
-    foreach ($messages as $message) { 
-      
-      if (!isset($report[$message['account_id']][$message['task_id']])) {
-        $report[$message['account_id']][$message['task_id']] = $message;
-      }
-
-      if (!isset($currentAccountId)) {
-        $currentAccountId = $message['account_id'];
-      } else if ($currentAccountId != $message['account_id']) { 
-        foreach ($report[$currentAccountId] as $msg) { 
-          $start = $end = '-';
-          $taskStatus = strtolower($msg['task_status']);
-          if ($taskStatus == 'start') {
-            $start = date('H:i', $msg['send_time']);
-          } else if ($taskStatus == 'end') {
-            $end = date('H:i', $msg['send_time']);
-          }
-          
-          $row = [
-            'Name' => $msg['account_name'],
-            'Project' => $msg['project_name'],
-            'URL' => $msg['task_url'],
-            'Start' => $start,
-            'End' => $end,
-            'Time' => '-'
-          ];
-
-          $csv->insertOne($row);
-        } 
-
-        unset($report[$currentAccountId]);
-        $currentAccountId = $message['account_id'];
-      }
-      
-      $taskStatus = strtolower($message['task_status']);
-      $report[$message['account_id']][$message['task_id']][$taskStatus] = $message['send_time'];
-      
-      if (!empty($report[$message['account_id']][$message['task_id']]['start']) && !empty($report[$message['account_id']][$message['task_id']]['end'])) {
-        $start = date('H:i', $report[$message['account_id']][$message['task_id']]['start']);
-        $end = date('H:i', $report[$message['account_id']][$message['task_id']]['end']);
-        $interval = $report[$message['account_id']][$message['task_id']]['end'] - $report[$message['account_id']][$message['task_id']]['start'];
-        $duration = sprintf('%0.2f', $interval / (60 * 60));
-
-        $row = [
-          'Name' => $message['account_name'],
-          'Project' => $message['project_name'],
-          'URL' => $message['task_url'],
-          'Start' => $start,
-          'End' => $end,
-          'Time' => $duration
-        ];
-
-        $csv->insertOne($row);
-
-        unset($report[$message['account_id']][$message['task_id']]);
-      }
-    }
-    
-    return response((string) $csv, 200, [
-      'Content-Type' => 'text/csv',
-      'Content-Transfer-Encoding' => 'binary',
-      'Content-Disposition' => 'attachment; filename="'.date('Ymd', $todayTsStart).'.csv"',
-    ]);
   }
 
   public function profile(Request $request)

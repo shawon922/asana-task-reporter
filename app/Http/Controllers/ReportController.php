@@ -24,102 +24,73 @@ class ReportController extends Controller
 
   public function export(Request $request)
   {
-
     $header = ['Name',	'Project',	'URL',	'Start',	'End',	'Time'];
     $date = $request->get('date');
-
-    if (!empty($date)) {
-      $todayTsStart = strtotime($date . ' 00:00:00');
-      $todayTsEnd = strtotime($date . ' 23:59:59');
-    } else {
-      $todayTsStart = strtotime('today');
-      $todayTsEnd = strtotime('tomorrow') - 1;
-    }
     
+    if (!empty($date)) {
+      $todayTsStart = $date . ' 00:00:00';
+      $todayTsEnd = $date . ' 23:59:59';
+    } else {
+      $todayTsStart = date('Y-m-d 00:00:00');
+      $todayTsEnd = date('Y-m-d 23:59:59');
+    }
+
+    $where = [
+      ['updated_at', '>=', $todayTsStart],
+      ['updated_at', '<=', $todayTsEnd]
+    ];
+
     $messages = ChatworkMessage::select([
                     'id', 
                     'account_id',
+                    'body',
                     'account_name',
                     'task_id',
-                    'task_status',
                     'project_name',
                     'task_url',
-                    'send_time',
+                    'start_time',
+                    'end_time',
+                    'task_status',
+                    'created_at',
+                    'updated_at',
                   ])
-                  ->where('send_time', '>=', $todayTsStart)->where('send_time', '<=', $todayTsEnd)
+                  ->where($where)
                   ->orderBy('account_id', 'asc')
-                  ->orderBy('send_time', 'asc')
+                  ->orderBy('created_at', 'asc')
                   ->get()
                   ->toArray();
     
     $csv = \League\Csv\Writer::createFromFileObject(new \SplTempFileObject);
     $csv->setOutputBOM(\League\Csv\Writer::BOM_UTF8);
     $csv->insertOne($header);
-    
-    $report = [];
 
     foreach ($messages as $message) { 
-      
-      if (!isset($report[$message['account_id']][$message['task_id']])) {
-        $report[$message['account_id']][$message['task_id']] = $message;
-      }
-
-      if (!isset($currentAccountId)) {
-        $currentAccountId = $message['account_id'];
-      } else if ($currentAccountId != $message['account_id']) { 
-        foreach ($report[$currentAccountId] as $msg) { 
-          $start = $end = '-';
-          $taskStatus = strtolower($msg['task_status']);
-          if ($taskStatus == 'start') {
-            $start = date('H:i', $msg['send_time']);
-          } else if ($taskStatus == 'end') {
-            $end = date('H:i', $msg['send_time']);
-          }
-          
-          $row = [
-            'Name' => $msg['account_name'],
-            'Project' => $msg['project_name'],
-            'URL' => $msg['task_url'],
-            'Start' => $start,
-            'End' => $end,
-            'Time' => '-'
-          ];
-
-          $csv->insertOne($row);
-        } 
-
-        unset($report[$currentAccountId]);
-        $currentAccountId = $message['account_id'];
-      }
-      
-      $taskStatus = strtolower($message['task_status']);
-      $report[$message['account_id']][$message['task_id']][$taskStatus] = $message['send_time'];
-      
-      if (!empty($report[$message['account_id']][$message['task_id']]['start']) && !empty($report[$message['account_id']][$message['task_id']]['end'])) {
-        $start = date('H:i', $report[$message['account_id']][$message['task_id']]['start']);
-        $end = date('H:i', $report[$message['account_id']][$message['task_id']]['end']);
-        $interval = $report[$message['account_id']][$message['task_id']]['end'] - $report[$message['account_id']][$message['task_id']]['start'];
+      $start = date('H:i', $message['start_time']);
+      if (!empty($message['end_time'])) {
+        $end = date('H:i', $message['end_time']);
+        $interval = $message['end_time'] - $message['start_time'];
         $duration = sprintf('%0.2f', $interval / (60 * 60));
+      } else {
+        $end = '-';
+        $duration = '-';
+      }      
 
-        $row = [
-          'Name' => $message['account_name'],
-          'Project' => $message['project_name'],
-          'URL' => $message['task_url'],
-          'Start' => $start,
-          'End' => $end,
-          'Time' => $duration
-        ];
-
-        $csv->insertOne($row);
-
-        unset($report[$message['account_id']][$message['task_id']]);
-      }
+      $row = [
+        'Name' => $message['account_name'],
+        'Project' => $message['project_name'],
+        'URL' => $message['task_url'],
+        'Start' => $start,
+        'End' => $end,
+        'Time' => $duration
+      ];
+      
+      $csv->insertOne($row);
     }
-    
+        
     return response((string) $csv, 200, [
       'Content-Type' => 'text/csv',
       'Content-Transfer-Encoding' => 'binary',
-      'Content-Disposition' => 'attachment; filename="'.date('Ymd', $todayTsStart).'.csv"',
+      'Content-Disposition' => 'attachment; filename="'.date('Ymd', strtotime($todayTsStart)).'.csv"',
     ]);
   }
 
