@@ -113,14 +113,26 @@ class ChatworkController extends Controller
 
             $taskStatus = strtolower(trim($taskStatus));
 
-            if ($taskStatus === 'start') {
-              $message = new ChatworkMessage;
-              $message->start_time = $data['send_time'];
-              $message->end_time = 0;
-              $message->message_id = $data['message_id'];
-              $message->room_id = $data['room_id'];
-              $message->account_id = $data['account_id'];
-              $message->account_name = isset($roomMembers[$data['account_id']]) ? $roomMembers[$data['account_id']] : '-';
+            if ($taskStatus === 'start') { 
+              if (isset($data['update_time']) && $data['update_time'] != 0) {
+                $message = ChatworkMessage::where([
+                    ['message_id', '=', $data['message_id']],
+                    ['account_id', '=', $data['account_id']],
+                  ])
+                  ->orderBy('id', 'desc')
+                  ->first();
+              }              
+
+              if (empty($message)) {
+                $message = new ChatworkMessage;
+                $message->start_time = !empty($data['update_time']) ? $data['update_time'] : $data['send_time'];
+                $message->message_id = $data['message_id'];
+                $message->end_time = 0;
+                $message->room_id = $data['room_id'];
+                $message->account_id = $data['account_id'];
+                $message->account_name = isset($roomMembers[$data['account_id']]) ? $roomMembers[$data['account_id']] : '-';
+              }
+
               $message->body = $rawMessage;
               $message->task_id = $taskId;
               $message->project_name = $projectName;
@@ -134,6 +146,11 @@ class ChatworkController extends Controller
               ])
               ->orderBy('id', 'desc')
               ->first();
+              
+              if (empty($message)) {
+                return;
+              }
+
               $message->end_time = $data['send_time'];
 
             } else {
@@ -152,7 +169,7 @@ class ChatworkController extends Controller
     } catch (\Exception $e) {
     }
     
-    return $message;
+    return isset($message) ? $message : null;
   }
 
   public function profile(Request $request)
